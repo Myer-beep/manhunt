@@ -1,0 +1,3 @@
+{ "name": "manhunt-live", "version": "0.1.0", "private": true, "description": "Real-time GPS manhunt game server + web app",
+  "main": "server.js", "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.js", "test": "node --test test/engine.test.js test/api.test.js", "e2e": "node test/e2e.js && node test/leaflet-stub.js" } }

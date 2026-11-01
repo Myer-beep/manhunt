@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><title>Manhunt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light"><meta name="theme-color" content="#101010">
+<meta name="description" content="Manhunt: a real-life GPS tag game for friends.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#101010;--card:#1c1c1e;--line:#2c2c2e;--tx:#fff;--mu:#9a9aa0;--ac:#2f7bff;--hot:#ff4a2a;--gn:#2fbf71;--am:#ffb020;color-scheme:dark;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+:root[data-theme=light]{--bg:#f2f2f4;--card:#fff;--line:#e3e3e8;--tx:#111;--mu:#6b6b73;--ac:#1f63e0;color-scheme:light}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--tx);font:17px/1.35 -apple-system,system-ui,sans-serif;max-width:520px;margin:auto;padding:0 16px 24px}
+h1{font-size:38px;margin:4px 0}.mu{color:var(--mu);font-size:14px}.note{color:var(--mu);font-size:14px;margin:8px 2px}.lab{color:var(--mu);font-size:15px;margin:18px 2px 6px}
+.nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:12px 0}.nav a{color:var(--ac);font-weight:600;cursor:pointer}.nav b{font-size:19px}
+.card{background:var(--card);border-radius:20px;padding:6px 16px;margin:8px 0}.pad{padding:14px 16px}
+input[type=text]{width:100%;padding:14px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--tx);font-size:18px}
+select{padding:10px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--tx);font-size:16px;max-width:55%}
+button{font:inherit;cursor:pointer}.go{width:100%;background:var(--ac);color:#fff;border:0;border-radius:22px;padding:18px;font-size:20px;font-weight:800;margin:8px 0}.go.alt{background:var(--card);color:var(--tx)}.go:disabled{opacity:.5}
+.sm{background:var(--card);color:var(--tx);border:0;border-radius:14px;padding:12px 16px;font-weight:700;margin:4px 6px 4px 0}.sm.hot{background:var(--ac);color:#fff}.sm.red{background:#c62828;color:#fff}.card .sm:not(.hot):not(.red){background:var(--line)}
+.rw{display:flex;align-items:center;gap:10px;min-height:54px;border-bottom:1px solid var(--line)}.rw:last-child{border-bottom:0}.rw>span:first-child{flex:1}.rw small{display:block;color:var(--mu);font-size:13px}
+.seg{display:flex;background:var(--line);border-radius:14px;padding:4px;gap:2px}.seg button{flex:1;background:none;border:0;color:var(--tx);padding:11px 4px;border-radius:11px;font-weight:600}.seg button.on{background:var(--ac);color:#fff}
+.code{font-size:56px;font-weight:900;letter-spacing:3px;text-align:center;margin:6px 0}
+.chips{display:flex;gap:8px;margin:10px 0}.chip{flex:1;background:var(--card);border-radius:14px;padding:8px 4px;text-align:center}.chip b{display:block;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}.chip span{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px}
+.ban{border-radius:14px;padding:10px 12px;font-weight:700;margin:0 0 8px;font-size:15px;background:#5b4fe0;color:#fff}.ban.warn{background:var(--am);color:#1a1000}.ban.bad{background:#c62828}.ban.hot{background:var(--hot)}
+#mapwrap{position:relative;height:50vh;min-height:300px;border-radius:20px;overflow:hidden;background:var(--card)}#map{position:absolute;inset:0}#recenter{position:absolute;right:10px;bottom:10px;z-index:500;background:var(--card);color:var(--tx);border:0;border-radius:12px;padding:10px 12px;font-weight:700;box-shadow:0 2px 8px #0006}
+.mk{width:26px;height:26px;display:grid;place-items:center;font-weight:900;font-size:12px;color:#fff;border:3px solid #fff;box-shadow:0 1px 6px #0008}.mk.runner{border-radius:50%;background:var(--gn)}.mk.hunter{background:var(--hot);transform:rotate(45deg);border-radius:5px}.mk.hunter i{transform:rotate(-45deg);font-style:normal}.mk.me{outline:3px solid #2f7bff}.mk.pin{border-radius:50%;background:#ff4a2a33;border:3px dashed var(--hot);color:var(--tx)}.mk.stale{opacity:.45}
+.mlab{position:absolute;left:50%;top:-18px;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap;background:#000a;color:#fff;border-radius:6px;padding:1px 5px}
+.pr{display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--line)}.pr:last-child{border-bottom:0}.av{width:38px;height:38px;border-radius:50%;background:#3a3a3e;display:grid;place-items:center;font-weight:800;color:#fff;flex:none}.nm{font-weight:600}.you{color:var(--ac);font-size:13px;font-weight:700}.rl{margin-left:auto;color:var(--mu);font-size:15px;text-align:right}.rl.hot{color:var(--hot)}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:20px;z-index:2000}#modal>div{background:var(--card);padding:20px;border-radius:22px;max-width:360px;width:100%;max-height:85vh;overflow:auto}#modal h2{margin:0 0 6px;font-size:20px}#modal p{color:var(--mu);margin:0 0 12px}#modal button{display:block;width:100%;margin:6px 0}
+#toast{position:fixed;left:12px;right:12px;bottom:14px;max-width:496px;margin:auto;background:#c62828;color:#fff;padding:12px 14px;border-radius:14px;font-weight:600;display:none;z-index:3000}
+@keyframes pulse{50%{opacity:.4}}.pulse{animation:pulse 1s infinite}@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+.leaflet-container{font:inherit}
+</style></head>
+<body>
+<noscript>Manhunt needs JavaScript.</noscript>
+<div id="app"></div><div id="modal"><div id="mbody"></div></div><div id="toast" role="alert"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" async></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DEV = /[?&]dev=1/.test(location.search);
+const MI = 1609.34, FT = .3048;
+const fmtD = m => m >= 161 ? (m / MI).toFixed(2) + ' mi' : Math.round(m / FT / 10) * 10 + ' ft';
+const mmss = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const ls = { get: k => { try { return localStorage.getItem('ml.' + k); } catch (e) { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem('ml.' + k) : localStorage.setItem('ml.' + k, v); } catch (e) { } } };
+const rnd = () => { const a = new Uint8Array(16); crypto.getRandomValues(a); return [...a].map(x => x.toString(16).padStart(2, '0')).join(''); };
+const S = { token: ls.get('token') || (ls.set('token', rnd()), ls.get('token')) || rnd(), name: ls.get('name') || '', game: ls.get('game') || '', st: null, at: 0, skew: 0, pos: null, gps: 'idle', lastSent: 0, sentPos: null, offline: false, roleMsg: null, prevRole: null, asked: new Set(), fails: 0, cache: {}, mapUI: null };
+const now = () => Date.now() + S.skew;
+
+// ---------- network ----------
+async function api(method, path, body) {
+  let r; try { r = await fetch(path, { method, headers: { 'Content-Type': 'application/json', 'x-token': S.token }, body: body ? JSON.stringify(body) : undefined }); }
+  catch (e) { return { ok: false, status: 0, error: 'Can\u2019t reach the server. Check your connection.' }; }
+  let j = {}; try { j = await r.json(); } catch (e) { }
+  return { ok: r.ok, status: r.status, ...j };
+}
+const act = async (type, extra = {}) => { const r = await api('POST', '/api/act', { game: S.game, type, ...extra }); if (!r.ok && r.error) toast(r.error); if (r.status === 404) leaveLocal('That game isn\u2019t available anymore.'); return r; };
+let toastT; function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 3500); }
+function ask(title, msg, btns) { $('mbody').innerHTML = `<h2>${esc(title)}</h2><p>${msg}</p>` + btns.map((b, i) => `<button class="sm ${i === 0 ? 'hot' : ''}" id="mb${i}">${esc(b[0])}</button>`).join(''); btns.forEach((b, i) => $('mb' + i).onclick = () => { $('modal').style.display = 'none'; b[1] && b[1](); }); $('modal').style.display = 'flex'; }
+const closeModal = () => { $('modal').style.display = 'none'; };
+
+// ---------- GPS (real device location) ----------
+let watchId = null, wake = null;
+function startGps() {
+  if (watchId !== null) return;
+  if (!navigator.geolocation) { S.gps = 'off'; return; }
+  S.gps = 'wait';
+  watchId = navigator.geolocation.watchPosition(p => {
+    S.pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 50, t: Date.now() }; S.gps = 'ok'; sendLoc();
+  }, e => { S.gps = e.code === 1 ? 'denied' : e.code === 3 ? 'wait' : 'unavail'; }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(w => wake = w).catch(() => { }); } catch (e) { }
+}
+function stopGps() { if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; } S.gps = 'idle'; try { wake && wake.release(); } catch (e) { } wake = null; }
+const liveState = () => S.st && ['head', 'active', 'paused'].includes(S.st.game.state);
+function hav(a, b) { const R = 6371000, r = x => x * Math.PI / 180, h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lng - a.lng) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
+async function sendLoc(force) {
+  if (!S.pos || !liveState() || S.st.me.status !== 'active') return;
+  const t = Date.now(); if (!force && t - S.lastSent < 3500 && !(S.sentPos && hav(S.sentPos, S.pos) > 12 && t - S.lastSent > 1500)) return;
+  S.lastSent = t; S.sentPos = S.pos; const r = await api('POST', '/api/act', { game: S.game, type: 'loc', lat: S.pos.lat, lng: S.pos.lng, acc: S.pos.acc });
+  if (!r.ok && r.error && r.status !== 429 && r.status !== 0) toast(r.error);
+}
+setInterval(() => { if (S.pos && Date.now() - S.pos.t < 20000) sendLoc(true); }, 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.game) { if (watchId === null) startGps(); poll(); } });
+
+// ---------- map (Leaflet + OpenStreetMap, with a simple built-in fallback) ----------
+function markerHtml(k) { return `<div class="mk ${k.kind} ${k.me ? 'me' : ''} ${k.stale ? 'stale' : ''}"><i>${esc((k.name || '?')[0])}</i></div>${k.label ? `<div class="mlab">${esc(k.label)}</div>` : ''}`; }
+function mkLeaflet(el) {
+  const map = L.map(el, { zoomControl: true }).setView([0, 0], 2);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  const layer = L.layerGroup().addTo(map); let fitted = false, last = null;
+  const fit = m => { if (m.zone && m.zone.r > 0) map.fitBounds(L.circle([m.zone.lat, m.zone.lng], { radius: Math.max(m.zone.r, 60) }).getBounds(), { padding: [12, 12] }); else if (m.markers.length) map.setView([m.markers[0].lat, m.markers[0].lng], 17); };
+  return { kind: 'leaflet', render(m) {
+    last = m; layer.clearLayers();
+    if (m.zone && m.zone.r > 0) { L.circle([m.zone.lat, m.zone.lng], { radius: m.zone.r, color: '#fff', weight: 3, fillColor: '#2f7bff', fillOpacity: .08 }).addTo(layer); if (m.zone.next) L.circle([m.zone.lat, m.zone.lng], { radius: m.zone.next, color: '#ffb020', weight: 2, dashArray: '6 6', fill: false }).addTo(layer); }
+    m.markers.forEach(k => L.marker([k.lat, k.lng], { icon: L.divIcon({ className: '', html: markerHtml(k), iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(layer));
+    if (!fitted) { fit(m); fitted = true; }
+  }, recenter() { if (last) fit(last); }, destroy() { map.remove(); } };
+}
+function mkFallback(el) {
+  el.innerHTML = '<svg viewBox="0 0 340 340" style="width:100%;height:100%;background:var(--card)"></svg>'; const svg = el.firstChild; let last = null;
+  return { kind: 'svg', render(m) {
+    last = m; const z = m.zone || m.markers[0]; if (!z) { svg.innerHTML = ''; return; }
+    const c = { lat: z.lat, lng: z.lng }, kx = 111320 * Math.cos(c.lat * Math.PI / 180), ky = 110540, R = Math.max(z.r || 60, 60) * 1.2, s = 160 / R;
+    const P = k => [170 + (k.lng - c.lng) * kx * s, 170 - (k.lat - c.lat) * ky * s];
+    let h = '<g stroke="#8883" stroke-width="1">' + [0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => `<path d="M${i * 42.5} 0V340M0 ${i * 42.5}H340"/>`).join('') + '</g>';
+    if (m.zone && m.zone.r > 0) { h += `<circle cx="170" cy="170" r="${m.zone.r * s}" fill="#2f7bff22" stroke="#fff" stroke-width="3"/>`; if (m.zone.next) h += `<circle cx="170" cy="170" r="${m.zone.next * s}" fill="none" stroke="#ffb020" stroke-width="2" stroke-dasharray="6 5"/>`; }
+    h += m.markers.map(k => { const [x, y] = P(k), col = k.kind === 'hunter' ? '#ff4a2a' : k.kind === 'pin' ? '#ff4a2a55' : '#2fbf71'; return `<g opacity="${k.stale ? .45 : 1}"><circle cx="${x}" cy="${y}" r="${k.kind === 'pin' ? 11 : 9}" fill="${col}" stroke="${k.me ? '#2f7bff' : '#fff'}" stroke-width="3" ${k.kind === 'pin' ? 'stroke-dasharray="4 3"' : ''}/><text x="${x}" y="${y + 4}" font-size="10" font-weight="800" fill="#fff" text-anchor="middle">${esc((k.name || '?')[0])}</text>${k.label ? `<text x="${x}" y="${y - 14}" font-size="10" font-weight="700" fill="currentColor" text-anchor="middle">${esc(k.label)}</text>` : ''}</g>`; }).join('');
+    svg.innerHTML = h;
+  }, recenter() { }, destroy() { el.innerHTML = ''; } };
+}
+function mapModel() {
+  const st = S.st, g = st.game, t = now(), markers = [];
+  const mine = S.pos || (st.players.find(p => p.you && p.lat !== undefined));
+  if (mine) markers.push({ kind: st.me.role === 'hunter' ? 'hunter' : 'runner', me: true, name: 'You', lat: mine.lat, lng: mine.lng, label: 'You' });
+  st.players.forEach(p => { if (p.you || p.lat === undefined) return; markers.push({ kind: p.role === 'hunter' ? 'hunter' : 'runner', name: p.name, lat: p.lat, lng: p.lng, stale: (p.age + (t - st.now) / 1000) > 30, label: p.name + (p.outUntil ? ' \u26a0' : '') }); });
+  st.pins.forEach(p => { if (!p.you || st.me.role === 'runner') markers.push({ kind: 'pin', name: p.name, lat: p.lat, lng: p.lng, label: (p.you ? 'Your ping' : p.name) + ' \u00b7 ' + mmss(p.age + (Date.now() - S.at) / 1000) }); });
+  const z = g.zone, zone = z && z.r > 0 ? { lat: z.lat, lng: z.lng, r: z.r, next: z.nextAt && z.r > z.minR ? Math.max(z.minR, z.r - z.by) : 0 } : { lat: z.lat, lng: z.lng, r: 0 };
+  return { zone, markers };
+}
+
+// ---------- screens ----------
+const put = (id, html) => { const el = $(id); if (!el) return; if (S.cache[id] !== html) { S.cache[id] = html; el.innerHTML = html; } };
+function show(html, key) { if (S.cache.screen === html) return; S.cache = { screen: html }; destroyMap(); $('app').innerHTML = html; }
+function destroyMap() { if (S.mapUI) { try { S.mapUI.destroy(); } catch (e) { } S.mapUI = null; } }
+function toHome(msg) { S.cache = {}; destroyMap(); stopGps(); S.st = null; $('app').innerHTML = `
+<div style="text-align:center;margin:26px 0 20px"><div style="font-size:54px">\ud83c\udfaf</div><h1>Manhunt</h1><div class="mu">Real-life tag. Runners run, hunters hunt, and the zone closes in.</div></div>
+${msg ? `<div class="ban warn">${esc(msg)}</div>` : ''}
+<div class="lab">Your name</div><input type="text" id="name" maxlength="24" autocomplete="nickname" placeholder="Your name" value="${esc(S.name)}">
+<button class="go" id="hostBtn">Host a game</button><button class="go alt" id="joinBtn">Join with a code</button>
+<div class="note" style="text-align:center">You need to allow location. It\u2019s shared only with players in your game while it\u2019s live.<br><a id="safetyLink" style="color:var(--ac)">Safety rules</a></div>`;
+  const nm = () => { S.name = $('name').value.replace(/[<>&"'`]/g, '').trim().slice(0, 24); ls.set('name', S.name); return S.name; };
+  const need = () => nm().length >= 2 || (toast('Enter a name (2 to 24 characters).'), false);
+  $('hostBtn').onclick = () => need() && briefing(() => hostCreate()); $('joinBtn').onclick = () => need() && joinForm(); $('safetyLink').onclick = safety;
+  const q = new URLSearchParams(location.search).get('join'); if (q && !S.autoJoin) { S.autoJoin = 1; if (S.name.length >= 2) joinForm(q); }
+}
+function safety() { ask('Safety rules', 'Play in public, permitted places only. Never go onto roads, private property, restricted areas or buildings, and obey traffic laws.<br><br>Tag gently, and only players who are in the game. Never chase someone who has left. You can leave any time.<br><br>Under 18? Get a parent or guardian\u2019s OK first. This app is not an emergency service and doesn\u2019t replace adult supervision.', [['OK']]); }
+function briefing(next) { ask('Before you play', 'Your location is shared with the other players in this game only while it is live. Play in public, permitted places. Never enter roads, private property or restricted areas, obey traffic laws, tag gently, and never chase anyone who left. Under 18? Ask a parent or guardian first.', [['I agree, continue', next], ['Cancel']]); }
+function getFix(cb) { startGps(); const t0 = Date.now(); const wait = () => { if (S.pos) return cb(S.pos); if (S.gps === 'denied') return toast('Location is blocked. Allow location for this site in your browser settings, then try again.'); if (S.gps === 'off') return toast('This browser can\u2019t give a location.'); if (Date.now() - t0 > 20000) return toast('Couldn\u2019t get your location yet. Go outside or near a window and try again.'); toast('Finding your location\u2026'); setTimeout(wait, 700); }; wait(); }
+function hostCreate() { getFix(async p => { const r = await api('POST', '/api/create', { name: S.name, lat: p.lat, lng: p.lng, rules: {} }); if (!r.ok) return toast(r.error || 'Couldn\u2019t create the game.'); enter(r.game); }); }
+function joinForm(prefill) {
+  $('app').innerHTML = `<div class="nav"><a id="back">\u2039 Back</a><b>Join a game</b><span></span></div><div class="lab">Enter the game code</div>
+<div class="card pad"><input type="text" id="code" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Game code" placeholder="ABC123" value="${esc(prefill || '')}" style="text-align:center;font-size:30px;font-weight:900;letter-spacing:4px;text-transform:uppercase"><div id="jerr" class="note" style="color:#ff6a5a;min-height:20px"></div></div>
+<button class="go" id="joinGo">Join game</button>`;
+  S.cache = {}; $('back').onclick = () => toHome(); const go = () => { const code = $('code').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!/^[A-Z0-9]{4,8}$/.test(code)) { $('jerr').textContent = 'Enter the 4 to 8 letter and number code your host shared.'; return; }
+    briefing(async () => { getFix(async () => { const r = await api('POST', '/api/join', { code, name: S.name }); if (!r.ok) { joinForm(code); $('jerr').textContent = r.error || 'Couldn\u2019t join.'; return; } enter(r.game); }); }); };
+  $('joinGo').onclick = go; $('code').onkeydown = e => { if (e.key === 'Enter') go(); };
+}
+function enter(game) { S.game = game; ls.set('game', game); S.st = null; S.cache = {}; S.prevRole = null; S.asked = new Set(); startGps(); poll(); }
+function leaveLocal(msg) { S.game = ''; ls.set('game', null); toHome(msg); }
+
+const OPT = {
+  radius: (DEV ? [30, 60] : []).concat([.1, .15, .26, .4, .6, 1, 2].map(x => Math.round(x * MI))), every: (DEV ? [.05] : []).concat([0, 1, 2, 3, 5, 10]), by: [100, 200, 300, 500].map(x => Math.round(x * FT)), minR: [250, 490, 800].map(x => Math.round(x * FT)),
+  ping: (DEV ? [.05] : []).concat([0, 1, 2, 3, 5]), head: (DEV ? [0, .05] : []).concat([.5, 1, 2, 3, 5]), oob: (DEV ? [.1] : []).concat([1, 2, 3]), lock: (DEV ? [3] : []).concat([10, 15, 30, 60])
+};
+const LAB = { radius: fmtD, every: v => v ? v + ' min' : 'Off', by: fmtD, minR: fmtD, ping: v => v ? v + ' min' : 'Off', head: v => v + ' min', oob: v => v + ' min', lock: v => v + ' s' };
+const NAME = { radius: 'Zone size', every: 'Zone shrinks every', by: 'Shrinks by', minR: 'Smallest zone', ping: 'Ping every', head: 'Head start', oob: 'Time to return when outside', lock: 'No tag-backs for' };
+function lobbyView(st) {
+  const g = st.game, r = g.rules, host = g.host, me = st.players.find(p => p.you);
+  const sel = k => { const cur = r[k], opts = [...new Set(OPT[k].concat([cur]))].sort((a, b) => a - b); return host ? `<select data-rule="${k}" aria-label="${NAME[k]}">${opts.map(o => `<option value="${o}" ${Math.abs(o - cur) < 1e-6 ? 'selected' : ''}>${LAB[k](o)}</option>`).join('')}</select>` : `<span class="mu">${LAB[k](cur)}</span>`; };
+  const row = k => `<div class="rw"><span>${NAME[k]}</span>${sel(k)}</div>`;
+  const gpsTxt = S.gps === 'ok' ? `GPS ready \u00b1${Math.round(S.pos.acc)} m` : S.gps === 'denied' ? 'Location blocked: allow it in your browser settings' : S.gps === 'wait' ? 'Finding GPS\u2026' : 'GPS unavailable';
+  return `<div class="nav"><a id="leave">\u2039 Leave</a><b>Lobby</b><span></span></div>
+<div class="card pad"><div class="mu">Game code</div><div class="code" id="gcode">${esc(g.code)}</div><div style="display:flex;gap:8px"><button class="sm" id="share" style="flex:1">Share</button><button class="sm" id="copy" style="flex:1">Copy code</button></div></div>
+<div class="note">${esc(gpsTxt)}. Zone center is the host\u2019s location.${host ? ' <a id="recenter" style="color:var(--ac)">Move zone to my location</a>' : ''}</div>
+<div class="lab">Game mode</div><div class="card pad">${host ? `<div class="seg" id="modeSeg"><button data-mode="classic" class="${r.mode === 'classic' ? 'on' : ''}">Classic</button><button data-mode="infection" class="${r.mode === 'infection' ? 'on' : ''}">Infection</button></div>` : `<b>${r.mode === 'classic' ? 'Classic' : 'Infection'}</b>`}
+<div class="note" style="margin:8px 0 0">${r.mode === 'classic' ? 'Regular tag: a tagged runner becomes the hunter and the hunter becomes a runner. No winner, no time limit. The host ends it.' : 'Tagged runners become hunters. The last runner standing wins. No time limit.'}</div></div>
+<div class="lab">House rules ${host ? '' : '\u00b7 set by the host'}</div><div class="card">${row('ping')}${row('head')}<div class="rw"><span>Play zone</span>${host ? `<select data-rule="zone" aria-label="Play zone"><option value="1" ${r.zone ? 'selected' : ''}>On</option><option value="0" ${r.zone ? '' : 'selected'}>Off</option></select>` : `<span class="mu">${r.zone ? 'On' : 'Off'}</span>`}</div>${r.zone ? row('radius') + row('every') + (r.every ? row('by') + row('minR') : '') + row('oob') : ''}${r.mode === 'classic' ? row('lock') : ''}</div>
+<div class="lab">You play as</div><div class="card pad"><div class="seg" id="pickSeg">${['hunter', 'runner', 'random'].map(p => `<button data-pick="${p}" class="${st.me.pick === p ? 'on' : ''}">${p[0].toUpperCase() + p.slice(1)}</button>`).join('')}</div></div>
+<div class="lab">Players \u00b7 ${st.players.length}</div><div class="card">${st.players.map(p => `<div class="pr player" data-id="${p.id}"><div class="av">${esc(p.name[0])}</div><span class="nm">${esc(p.name)}</span>${p.you ? '<span class="you">You</span>' : ''}${p.host ? '<span class="you">Host</span>' : ''}<span class="rl ${p.pick === 'hunter' ? 'hot' : ''}">${p.pick[0].toUpperCase() + p.pick.slice(1)} \u00b7 ${p.host || p.ready ? 'Ready' : 'Not ready'}</span>${host && !p.you ? `<a data-kick="${p.id}" style="color:var(--mu);padding:6px">\u2715</a>` : ''}</div>`).join('')}</div>
+<div class="note">${host ? 'Everyone must be Ready before you can start.' : 'The host starts the game once everyone is Ready.'}</div>
+${host ? '<button class="go" id="startBtn">Start game</button>' : `<button class="go ${me.ready ? 'alt' : ''}" id="readyBtn">${me.ready ? 'Not ready' : 'I\u2019m ready'}</button>`}`;
+}
+function bindLobby(st) {
+  const g = st.game;
+  $('leave').onclick = () => ask('Leave this game?', 'You\u2019ll stop sharing your location.', [['Leave', async () => { await act('leave'); leaveLocal(); }], ['Stay']]);
+  $('copy').onclick = () => { try { navigator.clipboard.writeText(g.code); toast('Code copied'); } catch (e) { ask('Game code', esc(g.code), [['OK']]); } };
+  $('share').onclick = () => { const url = location.origin + '/?join=' + g.code, text = `Join my Manhunt game: ${g.code}`; if (navigator.share) navigator.share({ title: 'Manhunt', text, url }).catch(() => { }); else { try { navigator.clipboard.writeText(url); toast('Link copied'); } catch (e) { ask('Share this link', esc(url), [['OK']]); } } };
+  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => act('pick', { pick: b.dataset.pick }).then(poll));
+  if (g.host) {
+    document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => sendRules({ mode: b.dataset.mode }));
+    document.querySelectorAll('select[data-rule]').forEach(s => s.onchange = () => sendRules({ [s.dataset.rule]: s.dataset.rule === 'zone' ? s.value === '1' : Number(s.value) }));
+    document.querySelectorAll('[data-kick]').forEach(a => a.onclick = () => act('kick', { target: a.dataset.kick }).then(poll));
+    $('startBtn').onclick = () => act('start').then(poll);
+    const rc = $('recenter'); if (rc) rc.onclick = () => { if (!S.pos) return toast('No GPS fix yet.'); act('recenter', { lat: S.pos.lat, lng: S.pos.lng }).then(r => r.ok && toast('Zone moved to you')); };
+  } else $('readyBtn').onclick = () => act('ready', { ready: !st.me.ready }).then(poll);
+}
+function sendRules(patch) { const cur = S.st.game.rules, rules = { ...cur, ...patch }; act('rules', { rules }).then(poll); }
+
+function gameSkeleton() {
+  show(`<div class="nav"><a id="leave">\u2039 Leave</a><b>In game</b><span></span></div><div id="banners"></div><div id="chips"></div>
+<div id="mapwrap"><div id="map"></div><button id="recenter" aria-label="Recenter map">Recenter</button></div>
+<div id="actions" style="margin-top:10px"></div>
+<div class="card pad" style="margin-top:10px"><div id="chatlog"></div><div id="chatq" style="margin:8px 0"></div><div style="display:flex;gap:8px"><input type="text" id="chatIn" maxlength="140" placeholder="Message your team" aria-label="Message your team" style="flex:1;padding:12px"><button class="sm hot" id="chatSend" style="margin:0">Send</button></div></div>
+<div class="lab">Players</div><div class="card" id="plist"></div><div class="lab">Events</div><div class="card pad" id="evt"></div><div style="height:30px"></div>`, 'game');
+  S.cache.screen = 'game-skeleton';
+  S.mapUI = window.L ? mkLeaflet($('map')) : mkFallback($('map'));
+  if (!window.L) { const w = setInterval(() => { if (window.L && S.mapUI && S.mapUI.kind === 'svg') { clearInterval(w); destroyMap(); S.mapUI = mkLeaflet($('map')); S.cache.map = ''; renderGame(); } }, 1000); setTimeout(() => clearInterval(w), 15000); }
+  $('recenter').onclick = () => S.mapUI && S.mapUI.recenter();
+  $('leave').onclick = () => ask('Leave this game?', 'You\u2019ll stop sharing your location.', [['Leave', async () => { await act('leave'); leaveLocal(); }], ['Stay']]);
+  const send = (t) => act('chat', { text: t }).then(r => { if (r.ok) { $('chatIn').value = ''; poll(); } });
+  $('chatSend').onclick = () => send($('chatIn').value); $('chatIn').onkeydown = e => { if (e.key === 'Enter') send($('chatIn').value); };
+}
+const QUICK = { runner: ['Hiding', 'Hunter nearby!', 'Moving north', 'Need help', 'Stay low'], hunter: ['On my way', 'Spotted one!', 'Checking the east', 'Spread out', 'Where are you?'] };
+function renderGame() {
+  const st = S.st, g = st.game, me = st.me, t = now(), role = me.role, z = g.zone;
+  if (S.cache.screen !== 'game-skeleton') gameSkeleton();
+  if (S.prevRole && me.role && S.prevRole !== me.role) { S.roleMsg = { until: Date.now() + 10000, txt: me.role === 'hunter' ? 'You\u2019re now a HUNTER. Your tools and chat switched to the hunters.' : 'You\u2019re now a RUNNER. Your tools and chat switched to the runners.' }; if (navigator.vibrate) navigator.vibrate(250); }
+  S.prevRole = me.role;
+  const ban = [];
+  if (S.roleMsg && Date.now() < S.roleMsg.until) ban.push(`<div class="ban">${esc(S.roleMsg.txt)}</div>`);
+  if (S.offline) ban.push('<div class="ban bad">Connection lost. Trying to reconnect\u2026</div>');
+  if (S.gps === 'denied') ban.push('<div class="ban bad">Location is blocked. Allow it in your browser settings or you can\u2019t play.</div>');
+  else if (S.gps === 'unavail' || S.gps === 'off') ban.push('<div class="ban bad">Can\u2019t get your location. Go outside or near a window.</div>');
+  else if (me.status === 'active' && (!S.pos || Date.now() - S.pos.t > 25000)) ban.push('<div class="ban warn">Waiting for GPS\u2026 keep this page open and in front.</div>');
+  else if (S.pos && S.pos.acc > 60) ban.push(`<div class="ban warn">GPS is weak (\u00b1${Math.round(S.pos.acc)} m). Tags and zone checks may wait for a better signal.</div>`);
+  if (g.state === 'head' && g.headEnds) ban.push(`<div class="ban">Head start: hunters are released in ${mmss((g.headEnds - t) / 1000)}</div>`);
+  if (me.oobUntil) ban.push(`<div class="ban hot ${''}">You\u2019re outside the zone and everyone can see you. Get back inside in ${mmss((me.oobUntil - t) / 1000)}.</div>`);
+  if (g.pingFlashUntil > t) ban.push(`<div class="ban hot">${role === 'runner' ? 'PING: hunters just got your location' : 'PING: runner locations updated'}</div>`);
+  if (me.lock && role === 'hunter') ban.push(`<div class="ban">No tag-backs for ${Math.ceil((me.lock.until - t) / 1000)}s</div>`);
+  if (g.state === 'paused') ban.push('<div class="ban">Paused by the host: all timers frozen</div>');
+  if (me.status === 'out') ban.push('<div class="ban">You\u2019re out of this round.</div>');
+  put('banners', ban.join(''));
+  put('chips', `<div class="chips"><div class="chip"><b>${role ? role[0].toUpperCase() + role.slice(1) : '\u2014'}</b><span>You are</span></div><div class="chip"><b>${z.r > 0 ? fmtD(z.r) : 'Off'}</b><span>Zone</span></div><div class="chip"><b>${z.nextAt ? mmss((z.nextAt - t) / 1000) : '\u2014'}</b><span>Next shrink</span></div><div class="chip"><b>${g.nextPing ? mmss((g.nextPing - t) / 1000) : 'off'}</b><span>Next ping</span></div></div>`);
+  if (S.mapUI) { const key = JSON.stringify(mapModel()); if (S.cache.map !== key) { S.cache.map = key; S.mapUI.render(JSON.parse(key)); } }
+  const acts = [];
+  if (role === 'hunter' && me.status === 'active' && g.state === 'active') acts.push('<button class="sm hot" id="tagBtn">Record a tag</button>');
+  if (g.host) { acts.push(`<button class="sm" id="pauseBtn">${g.state === 'paused' ? 'Resume' : 'Pause'}</button><button class="sm red" id="endBtn">End game</button>`); } else acts.push('<div class="note" style="margin:6px 0">Only the host can pause or end the game.</div>');
+  put('actions', acts.join(''));
+  const tb = $('tagBtn'); if (tb) tb.onclick = pickTag;
+  const pb = $('pauseBtn'); if (pb) pb.onclick = () => act(g.state === 'paused' ? 'resume' : 'pause').then(poll);
+  const eb = $('endBtn'); if (eb) eb.onclick = () => ask('End game?', 'The game ends for everyone.' + (g.mode === 'classic' ? ' Classic has no official winner.' : ''), [['End game', () => act('end').then(poll)], ['Keep playing']]);
+  put('chatlog', `<div class="lab" style="margin:0 0 6px">${role === 'hunter' ? 'Hunters' : 'Runners'} chat <span class="mu">only your team</span></div>` + (st.chat.length ? st.chat.slice(-6).map(m => `<div style="margin:3px 0"><b>${m.you ? 'You' : esc(m.name)}</b> ${esc(m.text)}</div>`).join('') : '<div class="mu">No messages yet.</div>'));
+  put('chatq', (QUICK[role] || []).map(q => `<button class="sm quick" style="padding:8px 12px;font-size:14px">${esc(q)}</button>`).join(''));
+  document.querySelectorAll('.quick').forEach(b => b.onclick = () => act('chat', { text: b.textContent }).then(poll));
+  const pinOf = id => st.pins.find(p => p.id === id);
+  put('plist', st.players.map(p => { const s = p.you ? (p.status === 'active' ? 'you' : p.status) : p.status !== 'active' ? p.status : p.outUntil ? 'OUTSIDE ' + mmss((p.outUntil - t) / 1000) : p.lat !== undefined ? ((S.pos ? Math.round(hav(S.pos, p)) + ' m' : 'live')) : (me.role === 'hunter' && p.role === 'runner' ? (pinOf(p.id) ? 'pinged ' + mmss(pinOf(p.id).age + (Date.now() - S.at) / 1000) + ' ago' : 'no ping yet') : 'waiting for GPS');
+    return `<div class="pr"><div class="av" style="background:${p.role === 'hunter' ? 'var(--hot)' : 'var(--gn)'}">${esc(p.name[0])}</div><span class="nm">${esc(p.name)}</span>${p.host ? '<span class="you">Host</span>' : ''}<span class="rl ${p.role === 'hunter' ? 'hot' : ''}">${p.role ? p.role[0].toUpperCase() + p.role.slice(1) : ''} \u00b7 ${esc(s)}</span></div>`; }).join(''));
+  put('evt', st.events.slice(-8).reverse().map(e => `<div class="note" style="margin:3px 0">${esc(e.txt)}</div>`).join('') || '<div class="note">Nothing yet.</div>');
+  if (st.pendingTag && !S.asked.has(st.pendingTag.id)) { S.asked.add(st.pendingTag.id); const pt = st.pendingTag; ask('Were you tagged?', `${esc(pt.hunter)} says they physically tagged you. Confirm only if it really happened.`, [['Yes, I was tagged', () => act('tagResponse', { id: pt.id, accept: true }).then(poll)], ['No', () => act('tagResponse', { id: pt.id, accept: false }).then(poll)]]); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); }
+  if (!st.pendingTag && S.pendingShown) { S.pendingShown = false; }
+}
+function pickTag() {
+  const st = S.st, rs = st.players.filter(p => p.role === 'runner' && p.status === 'active');
+  if (!rs.length) return toast('No runners to tag.');
+  $('mbody').innerHTML = `<h2>Who did you physically tag?</h2><p>They must confirm on their phone. You need to be close, with GPS on.</p>${rs.map((r, i) => `<button class="sm" data-t="${r.id}">${esc(r.name)}</button>`).join('')}<button class="sm" id="mbx">Cancel</button>`;
+  $('modal').style.display = 'flex'; $('mbx').onclick = closeModal;
+  $('mbody').querySelectorAll('[data-t]').forEach(b => b.onclick = async () => { closeModal(); const r = await act('tag', { target: b.dataset.t }); if (r.ok) toast('Waiting for them to confirm\u2026'); });
+}
+function doneView() {
+  const st = S.st, g = st.game, ps = [...st.players].sort((a, b) => b.tags - a.tags);
+  show(`<div style="text-align:center;margin:30px 0 10px"><div style="font-size:54px">${g.winner ? '\ud83c\udfc6' : '\ud83c\udfc1'}</div><h1>${g.winner ? esc(g.winner) + ' wins!' : 'Game over'}</h1><div class="mu">${g.winner ? 'Last runner standing' : esc(g.reason || (g.mode === 'classic' ? 'Classic has no official winner' : 'Ended'))}</div></div>
+<div class="card">${ps.map(p => `<div class="pr"><div class="av">${esc(p.name[0])}</div><span class="nm">${esc(p.name)}${p.you ? ' <span class="you">You</span>' : ''}</span><span class="rl">${p.tags} tags \u00b7 caught ${p.caught}\u00d7</span></div>`).join('')}</div>
+<div class="note" style="text-align:center">Locations are wiped when the game ends.</div><button class="go" id="homeBtn">Back to home</button>`, 'done');
+  stopGps(); $('homeBtn').onclick = () => { leaveLocal(); };
+}
+
+// ---------- loop ----------
+let inFlight = false;
+async function poll() {
+  if (!S.game || inFlight) return; inFlight = true;
+  try {
+    const r = await api('GET', '/api/state?game=' + encodeURIComponent(S.game));
+    if (r.status === 404) return leaveLocal('That game isn\u2019t available anymore.');
+    if (!r.ok) { S.fails++; if (S.fails >= 2) S.offline = true; if (S.st) renderGame(); return; }
+    S.fails = 0; S.offline = false; S.st = r; S.at = Date.now(); S.skew = r.now - Date.now();
+    render();
+  } finally { inFlight = false; }
+}
+function render() {
+  const st = S.st; if (!st) return; const state = st.game.state;
+  if (state === 'lobby') { const html = lobbyView(st); if (S.cache.screen !== html) { const sc = window.scrollY, act0 = document.activeElement && document.activeElement.id; show(html); bindLobby(st); window.scrollTo(0, sc); } if (watchId === null) startGps(); }
+  else if (state === 'done') { if (S.cache.screen && !String(S.cache.screen).startsWith('<div style="text-align:center;margin:30px')) doneView(); else if (!S.cache.screen) doneView(); }
+  else { if (watchId === null) startGps(); renderGame(); }
+}
+setInterval(poll, 2000);
+setInterval(() => { if (S.st && ['head', 'active', 'paused'].includes(S.st.game.state) && S.cache.screen === 'game-skeleton') renderGame(); }, 500);
+
+// resume a game after a reload, otherwise start at home
+(async () => { if (S.game) { const r = await api('GET', '/api/state?game=' + encodeURIComponent(S.game)); if (r.ok) { S.st = r; S.at = Date.now(); S.skew = r.now - Date.now(); render(); return; } S.game = ''; ls.set('game', null); } toHome(); })();
+</script>
+</body></html>
